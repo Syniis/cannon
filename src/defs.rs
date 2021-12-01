@@ -49,11 +49,13 @@ pub const ALL_RANKS: [Rank; NUM_RANKS] = [
 ];
 
 impl File {
+    #[inline(always)]
     pub fn from_index(i: u8) -> Self {
         assert!(i < 8);
         ALL_FILES[i as usize]
     }
 
+    #[inline(always)]
     pub fn left(&self) -> Option<Self> {
         if *self == File::A {
             None
@@ -62,6 +64,7 @@ impl File {
         }
     }
 
+    #[inline(always)]
     pub fn right(&self) -> Option<Self> {
         if *self == File::H {
             None
@@ -70,17 +73,20 @@ impl File {
         }
     }
 
+    #[inline(always)]
     pub fn to_index(&self) -> u8 {
         *self as u8
     }
 }
 
 impl Rank {
+    #[inline(always)]
     pub fn from_index(i: u8) -> Self {
         assert!(i < 8);
         ALL_RANKS[i as usize]
     }
 
+    #[inline(always)]
     pub fn down(&self) -> Option<Self> {
         if *self == Rank::One {
             None
@@ -89,6 +95,7 @@ impl Rank {
         }
     }
 
+    #[inline(always)]
     pub fn up(&self) -> Option<Self> {
         if *self == Rank::Eight {
             None
@@ -97,6 +104,7 @@ impl Rank {
         }
     }
 
+    #[inline(always)]
     pub fn to_index(&self) -> u8 {
         *self as u8
     }

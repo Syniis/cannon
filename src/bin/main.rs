@@ -4,7 +4,6 @@ use cannon::cannon_move::MoveWithScore;
 use cannon::color::Color::Black;
 use cannon::color::Color::White;
 use cannon::defs::*;
-use cannon::search::best_move;
 use cannon::square::Square;
 use cannon::tables::init;
 use macroquad::prelude::*;
@@ -24,8 +23,6 @@ async fn main() {
     let wc = Vec2::new(wcsq.file_index() as i32, wcsq.rank_index() as i32);
     let bcsq = board.castle_with_color(Black).to_square();
     let bc = Vec2::new(bcsq.file_index() as i32, bcsq.rank_index() as i32);
-    println!("{}", wc);
-    println!("{}", bc);
 
     let piece_color_map = |c: cannon::color::Color| match c {
         White => RED,
@@ -49,12 +46,14 @@ async fn main() {
 
         if is_key_pressed(KeyCode::G) {
             let time = Instant::now();
-            let MoveWithScore { bit_move: m, score } = best_move(board, 8);
+            let MoveWithScore { bit_move: m, score } = board.best_move(6);
             println!("{}, {}, {}", m.src(), m.dst(), board.side_to_move());
             println!("{}", score);
             println!("{}", time.elapsed().as_secs_f32());
             if m == BitMove::null() {
                 won = Some(!board.side_to_move());
+            } else if m.dst() == board.enemy_castle().to_square() {
+                won = Some(board.side_to_move());
             } else {
                 board.apply_move(m);
             }
@@ -62,8 +61,6 @@ async fn main() {
         }
 
         if is_key_pressed(KeyCode::U) {
-            println!("{}", board.prev_capture);
-            println!("{} -> {}", board.prev_move.src(), board.prev_move.dst());
             board.undo_move();
             last_clicked = None;
         }

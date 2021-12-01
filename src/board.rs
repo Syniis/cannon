@@ -1,20 +1,53 @@
 use crate::bitboard::BitBoard;
 use crate::bitboard::EMPTY;
 use crate::cannon_move::BitMove;
-use crate::color::Color;
-use crate::color::NUM_COLORS;
-use crate::movegen::MoveGen;
-use crate::movegen::MoveList;
+use crate::cannon_move::MoveWithScore;
+use crate::color::{Color, NUM_COLORS};
+use crate::movegen::{MoveGen, MoveList};
+use crate::search::*;
 use crate::square::Square;
+use std::sync::Arc;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
+pub struct BoardState {
+    pub prev_move: BitMove,
+    pub prev_capture: bool,
+    pub prev_state: Option<Arc<BoardState>>,
+}
+impl Default for BoardState {
+    fn default() -> Self {
+        Self {
+            prev_move: BitMove::null(),
+            prev_capture: false,
+            prev_state: None,
+        }
+    }
+}
+impl BoardState {
+    pub fn partial_clone(&self) -> Self {
+        Self {
+            prev_move: BitMove::null(),
+            prev_capture: false,
+            prev_state: self.prev_state(),
+        }
+    }
+    pub fn prev_state(&self) -> Option<Arc<Self>> {
+        self.prev_state.as_ref().cloned()
+    }
+}
+
 pub struct Board {
     pieces: BitBoard,
     pieces_with_color: [BitBoard; NUM_COLORS],
     side_to_move: Color,
     castles: [BitBoard; NUM_COLORS],
-    pub prev_move: BitMove,
-    pub prev_capture: bool,
+    state: Arc<BoardState>,
+}
+
+impl Clone for Board {
+    fn clone(&self) -> Self {
+        self.shallow_clone()
+    }
 }
 
 impl Board {
@@ -24,8 +57,7 @@ impl Board {
             pieces_with_color: [EMPTY; NUM_COLORS],
             side_to_move: color,
             castles: [EMPTY; 2],
-            prev_move: BitMove::null(),
-            prev_capture: false,
+            state: Arc::new(BoardState::default()),
         }
     }
 
@@ -60,6 +92,16 @@ impl Board {
         board.castles[1] |= BitBoard::from_square(Square::A8);
         board
     }
+
+    pub fn shallow_clone(&self) -> Self {
+        Self {
+            pieces: self.pieces,
+            pieces_with_color: self.pieces_with_color,
+            side_to_move: self.side_to_move,
+            castles: self.castles,
+            state: Arc::clone(&self.state),
+        }
+    }
     pub fn pieces(&self) -> BitBoard {
         self.pieces
     }
@@ -88,6 +130,10 @@ impl Board {
         self.pieces_with_color(!self.side_to_move())
     }
 
+    pub fn enemy_castle(&self) -> BitBoard {
+        self.castle_with_color(!self.side_to_move)
+    }
+
     pub fn color_on(&self, square: Square) -> Option<Color> {
         if (self.pieces_with_color(Color::White) & BitBoard::from_square(square)) != EMPTY {
             Some(Color::White)
@@ -109,6 +155,10 @@ impl Board {
         assert_ne!(m.src(), m.dst());
         let src_bb = BitBoard::from_square(m.src());
         let dst_bb = BitBoard::from_square(m.dst());
+
+        let mut new_state = self.state.partial_clone();
+
+        new_state.prev_state = Some(Arc::clone(&self.state));
         if m.is_shot() {
             self.pieces ^= dst_bb;
             self.pieces_with_color[(!self.side_to_move).to_index()] ^= dst_bb;
@@ -116,17 +166,18 @@ impl Board {
             self.pieces ^= src_bb;
             self.pieces |= dst_bb;
             self.pieces_with_color[self.side_to_move.to_index()] ^= src_bb | dst_bb;
-            self.prev_capture =
+            new_state.prev_capture =
                 (self.pieces_with_color[(!self.side_to_move).to_index()] & dst_bb).is_not_empty();
             self.pieces_with_color[(!self.side_to_move).to_index()] &= !dst_bb;
         }
-        self.prev_move = m;
+        new_state.prev_move = m;
         self.side_to_move = !self.side_to_move;
+        self.state = Arc::new(new_state);
     }
 
     pub fn undo_move(&mut self) {
         self.side_to_move = !self.side_to_move;
-        let undo_move = self.prev_move;
+        let undo_move = self.state.prev_move;
         let src_bb = BitBoard::from_square(undo_move.src());
         let dst_bb = BitBoard::from_square(undo_move.dst());
 
@@ -137,11 +188,12 @@ impl Board {
             self.pieces ^= src_bb;
             self.pieces &= !dst_bb;
             self.pieces_with_color[self.side_to_move.to_index()] ^= src_bb | dst_bb;
-            if self.prev_capture {
+            if self.state.prev_capture {
                 self.pieces |= dst_bb;
                 self.pieces_with_color[(!self.side_to_move).to_index()] |= dst_bb;
             }
         }
+        self.state = self.state.prev_state().unwrap();
     }
 
     pub fn generate_moves(&self) -> MoveList {
@@ -150,5 +202,10 @@ impl Board {
 
     pub fn generate_moves_for(&self, sq: Square) -> Vec<BitMove> {
         MoveGen::generate(self).filter(|m| m.src() == sq).collect()
+    }
+    pub fn best_move(&self, depth: u16) -> MoveWithScore {
+        let alpha = -9999;
+        let beta = 9999;
+        alpha_beta_search(&mut self.shallow_clone(), alpha, beta, depth)
     }
 }

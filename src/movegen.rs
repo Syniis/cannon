@@ -7,7 +7,7 @@ use crate::tables::*;
 
 pub const MAX_MOVES: usize = 64;
 pub struct MoveList {
-    moves: [BitMove; MAX_MOVES],
+    pub moves: [BitMove; MAX_MOVES],
     pub len: usize,
     pub idx: usize,
 }
@@ -27,6 +27,8 @@ impl MoveList {
         if self.len < MAX_MOVES {
             self.moves[self.len] = mv;
             self.len += 1;
+        } else {
+            println!("overflow");
         }
     }
     pub fn len(&self) -> usize {
@@ -73,11 +75,10 @@ impl FromIterator<BitMove> for MoveList {
     }
 }
 
-pub struct MoveGen {
-    moves: MoveList,
-}
+pub struct MoveGen {}
 
 impl MoveGen {
+    #[inline]
     pub fn generate(board: &Board) -> MoveList {
         let mut move_list = MoveList::default();
 
@@ -89,24 +90,23 @@ impl MoveGen {
         move_list
     }
 
+    #[inline]
     fn generate_forward_moves(moves: &mut MoveList, board: &Board) {
-        let mut pieces = board.pieces_with_color(board.side_to_move());
-        let mask = !pieces;
-        // While some piece left (mask not empty), pop lsb = src
-        // Get the forward bitboard for that position (TODO precompute the tables)
-        // and & it with the initial mask
+        let mut pieces = board.player_pieces();
+        let unoccupied = !pieces;
         while let Some(src) = pieces.pop_some_lsb() {
             let forwards = front(board.side_to_move(), src);
-            let forwards = forwards & mask;
+            let forwards = forwards & unoccupied;
             for dst in forwards {
                 moves.push(BitMove::make(src, dst));
             }
         }
     }
 
+    #[inline]
     fn generate_side_moves(moves: &mut MoveList, board: &Board) {
-        let mut pieces = board.pieces_with_color(board.side_to_move());
-        let enemy_pieces = board.pieces_with_color(!board.side_to_move());
+        let mut pieces = board.player_pieces();
+        let enemy_pieces = board.enemy_pieces() | board.enemy_castle();
 
         while let Some(src) = pieces.pop_some_lsb() {
             let sides = sides(board.side_to_move(), src);
@@ -118,12 +118,12 @@ impl MoveGen {
         }
     }
 
+    #[inline]
     fn generate_retreats(moves: &mut MoveList, board: &Board) {
         let my_color = board.side_to_move();
-        let enemy_color = !my_color;
-        let mut my_pieces = board.pieces_with_color(my_color);
-        let enemy_pieces = board.pieces_with_color(enemy_color);
-        let unoccupied = !board.pieces();
+        let mut my_pieces = board.player_pieces();
+        let enemy_pieces = board.enemy_pieces();
+        let unoccupied = !board.pieces_with_castles();
 
         while let Some(src) = my_pieces.pop_some_lsb() {
             let adj = front(my_color, src) | sides(my_color, src);
@@ -140,9 +140,9 @@ impl MoveGen {
         }
     }
 
+    #[inline]
     fn generate_cannon_jumps(moves: &mut MoveList, board: &Board) {
-        let my_color = board.side_to_move();
-        let mut my_pieces = board.pieces_with_color(my_color);
+        let mut my_pieces = board.player_pieces();
         let my_pieces_original = my_pieces;
         let unoccupied = !board.pieces_with_castles();
 
@@ -157,13 +157,12 @@ impl MoveGen {
         }
     }
 
+    #[inline]
     fn generate_cannon_shots(moves: &mut MoveList, board: &Board) {
-        let my_color = board.side_to_move();
-        let enemy_color = !my_color;
-        let mut my_pieces = board.pieces_with_color(my_color);
+        let mut my_pieces = board.player_pieces();
         let my_pieces_original = my_pieces;
-        let enemy_pieces = board.pieces_with_color(enemy_color);
-        let unoccupied = !board.pieces();
+        let enemy_pieces = board.enemy_pieces() | board.enemy_castle();
+        let unoccupied = !board.pieces_with_castles();
 
         while let Some(src) = my_pieces.pop_some_lsb() {
             for d in 0..8 {
@@ -187,7 +186,7 @@ fn move_test() {
     init();
     let board = Board::start_position();
     let rev = board.pieces().reverse();
-    println!("{}", rev);
+    println!("{}", board.pieces_with_castles());
     let moves = board.generate_moves_for(Square::A1);
     //let moves = board.generate_moves();
     for m in moves {

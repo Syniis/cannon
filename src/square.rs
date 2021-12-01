@@ -15,59 +15,70 @@ impl Default for Square {
 pub const NUM_SQUARES: usize = 64;
 
 impl Square {
+    #[inline(always)]
     pub fn new(sq: u8) -> Self {
         assert!(sq < 64);
         Self(sq)
     }
 
+    #[inline(always)]
     pub fn make_square(rank: Rank, file: File) -> Self {
         Self((rank.to_index() as u8) << 3 ^ (file.to_index() as u8))
     }
 
+    #[inline(always)]
     pub fn rank(&self) -> Rank {
         assert!(self.is_okay());
         Rank::from_index(self.rank_index())
     }
 
+    #[inline(always)]
     pub fn file(&self) -> File {
         assert!(self.is_okay());
         File::from_index(self.file_index())
     }
 
+    #[inline(always)]
     pub fn rank_index(&self) -> u8 {
         assert!(self.is_okay());
         self.0 >> 3
     }
 
+    #[inline(always)]
     pub fn file_index(&self) -> u8 {
         assert!(self.is_okay());
         self.0 & 7
     }
 
+    #[inline]
     pub fn up(&self) -> Option<Self> {
         self.rank()
             .up()
             .and_then(|r| Some(Square::make_square(r, self.file())))
     }
 
+    #[inline]
     pub fn down(&self) -> Option<Self> {
         self.rank()
             .down()
             .and_then(|r| Some(Square::make_square(r, self.file())))
     }
 
+    #[inline]
     pub fn left(&self) -> Option<Self> {
         self.file()
             .left()
             .and_then(|f| Some(Square::make_square(self.rank(), f)))
     }
 
+    #[inline]
     pub fn right(&self) -> Option<Self> {
         self.file()
             .right()
             .and_then(|f| Some(Square::make_square(self.rank(), f)))
     }
 
+    #[inline]
     pub fn forward(&self, color: Color) -> Option<Self> {
         match color {
             Color::White => self.up(),
@@ -75,18 +86,22 @@ impl Square {
         }
     }
 
+    #[inline]
     pub fn backward(&self, color: Color) -> Option<Self> {
         self.forward(!color)
     }
 
+    #[inline]
     pub fn flip(self) -> Self {
         Self(self.0 ^ 0b111000)
     }
 
+    #[inline(always)]
     pub fn to_u8(&self) -> u8 {
         self.0
     }
 
+    #[inline(always)]
     pub fn to_index(&self) -> usize {
         self.0 as usize
     }

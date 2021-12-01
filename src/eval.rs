@@ -15,7 +15,7 @@ pub fn eval(board: &Board) -> i16 {
         Color::White => area(me) - area(enemy.reverse()),
         Color::Black => area(me.reverse()) - area(enemy),
     };
-    area + 4 * pc
+    8 * pc + area
 }
 
 fn piece_count(mask: BitBoard) -> i16 {
@@ -34,6 +34,19 @@ fn area(mask: BitBoard) -> i16 {
     }
 
     max_rank_in_file.iter().sum::<u8>() as i16
+}
+
+fn area2(mask: BitBoard) -> i16 {
+    let mut max_rank_in_file: [i8; 8] = [-2; 8];
+    for sq in mask {
+        let r = sq.rank_index() as i8 - 2;
+        let f = sq.file_index() as usize;
+        max_rank_in_file[f] = max_rank_in_file[f].max(r);
+        max_rank_in_file[f.saturating_sub(1)] = max_rank_in_file[f.saturating_sub(1)].max(r);
+        max_rank_in_file[(f + 1).min(7)] = max_rank_in_file[(f + 1).min(7)].max(r);
+    }
+
+    max_rank_in_file.iter().sum::<i8>() as i16
 }
 
 #[test]
