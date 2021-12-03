@@ -2,123 +2,134 @@ use crate::board::Board;
 use crate::cannon_move::BitMove;
 use crate::cannon_move::MoveWithScore;
 use crate::eval::eval;
-use rayon;
 
+// TODO find good values
+const QUIESCENCE_DEPTH: u16 = 20;
+const WINDOW: i16 = 25;
+const WINDOW_DEPTH_FACTOR: i16 = 25;
+const NEG_INF: i16 = -9999;
+const INF: i16 = 9999;
+const WIN: i16 = 5000;
+
+// TODO futility pruning
+// TODO delta pruning
+// TODO static exchange evaluation (this should be quite important for this game)
+pub fn search(board: &mut Board, max_depth: u16) -> MoveWithScore {
+    let mut current_depth = 5;
+    let mut alpha = NEG_INF;
+    let mut beta = INF;
+    let mut best_move = MoveWithScore::new_with_score(BitMove::null(), alpha);
+
+    while current_depth <= max_depth {
+        println!("Searching at {}", current_depth);
+        let mut b = board.shallow_clone();
+        let (m, n) = alpha_beta_search(&mut b, alpha, beta, current_depth, 0);
+        println!("Nodes searched {}", n);
+        if m.score <= alpha {
+            alpha = NEG_INF;
+        } else if m.score >= beta {
+            beta = INF;
+        } else {
+            if m.bitmove() != BitMove::null() {
+                alpha =
+                    m.score - (WINDOW + (max_depth - current_depth) as i16 * WINDOW_DEPTH_FACTOR);
+                beta =
+                    m.score + (WINDOW + (max_depth - current_depth) as i16 * WINDOW_DEPTH_FACTOR);
+                best_move = m;
+            }
+            current_depth += 1;
+        }
+    }
+    best_move
+}
 pub fn alpha_beta_search(
     board: &mut Board,
     mut alpha: i16,
     beta: i16,
     depth: u16,
-) -> MoveWithScore {
+    nodes: u64,
+) -> (MoveWithScore, u64) {
     if depth == 0 {
-        let score = eval(board);
-        //println!("{}", score);
-        return MoveWithScore::new_with_score(BitMove::null(), score);
+        if board.last_capture() {
+            return quiescence(board, alpha, beta, QUIESCENCE_DEPTH, 0);
+        }
+        return (
+            MoveWithScore::new_with_score(BitMove::null(), eval(board)),
+            1,
+        );
     }
 
     let moves = board.generate_moves();
 
     if moves.is_empty() {
-        return MoveWithScore::new_with_score(BitMove::null(), 0);
+        return (MoveWithScore::new_with_score(BitMove::null(), -5000), 1);
     }
 
     let mut best_move = MoveWithScore::new_with_score(BitMove::null(), alpha);
-
+    let mut new_nodes = nodes;
     for m in moves {
         if m.dst() == board.enemy_castle().to_square() {
-            return MoveWithScore::new_with_score(m, 5000);
+            return (MoveWithScore::new_with_score(m, WIN), new_nodes);
         }
         board.apply_move(m);
-        let score = -alpha_beta_search(board, -beta, -alpha, depth - 1).score();
+        let (ret, n) = alpha_beta_search(board, -beta, -alpha, depth - 1, 0);
+        new_nodes += n;
+        let score = -ret.score();
         let result = MoveWithScore::new_with_score(m, score);
         board.undo_move();
         if result.score > alpha {
             alpha = result.score;
             if alpha >= beta {
-                return result;
+                return (result, new_nodes);
             }
             best_move = result;
         }
     }
-    best_move
+    (best_move, new_nodes)
 }
 
-pub fn jamboree(board: &mut Board, mut alpha: i16, beta: i16, depth: u16) -> MoveWithScore {
-    assert!(alpha <= beta);
-    if depth <= 2 {
-        return alpha_beta_search(board, alpha, beta, depth);
-    }
-
-    let mut moves = board.generate_moves();
-
-    if moves.is_empty() {
-        return MoveWithScore::new_with_score(BitMove::null(), 0);
-    }
-
-    let (mvs, _) = moves.moves.split_at_mut(moves.len);
-    let amount_seq = 1 + (mvs.len() / 4).min(2);
-    let (seq, non_seq) = mvs.split_at_mut(amount_seq);
-    let mut best_move = MoveWithScore::new_with_score(BitMove::null(), alpha);
-
-    for m in seq {
-        if m.dst() == board.enemy_castle().to_square() {
-            return MoveWithScore::new_with_score(*m, 5000);
-        }
-        board.apply_move(*m);
-
-        let score = -jamboree(board, -beta, -alpha, depth - 1).score();
-        let result = MoveWithScore::new_with_score(*m, score);
-        board.undo_move();
-        if result.score > alpha {
-            alpha = result.score;
-            if alpha >= beta {
-                return result;
-            }
-            best_move = result;
-        }
-    }
-
-    parallel_search(non_seq, board, alpha, beta, depth).max(best_move)
-}
-
-pub fn parallel_search(
-    moves: &mut [BitMove],
+pub fn quiescence(
     board: &mut Board,
     mut alpha: i16,
     beta: i16,
     depth: u16,
-) -> MoveWithScore {
-    if moves.len() <= 5 {
-        let mut best_move = MoveWithScore::new_with_score(BitMove::null(), alpha);
-
-        for m in moves {
-            if m.dst() == board.enemy_castle().to_square() {
-                return MoveWithScore::new_with_score(*m, 5000);
-            }
-            board.apply_move(*m);
-
-            let score = -jamboree(board, -beta, -alpha, depth - 1).score();
-            let result = MoveWithScore::new_with_score(*m, score);
-            board.undo_move();
-            if result.score > alpha {
-                alpha = result.score;
-                if alpha >= beta {
-                    return result;
-                }
-                best_move = result;
-            }
-        }
-        best_move
-    } else {
-        let mid = moves.len() / 2;
-        let (left, right) = moves.split_at_mut(mid);
-        let mut board_copy = board.clone();
-
-        let (best_left, best_right) = rayon::join(
-            || parallel_search(left, &mut board_copy, alpha, beta, depth),
-            || parallel_search(right, board, alpha, beta, depth),
+    nodes: u64,
+) -> (MoveWithScore, u64) {
+    if depth == 0 {
+        return (
+            MoveWithScore::new_with_score(BitMove::null(), eval(board)),
+            1,
         );
-
-        best_left.max(best_right)
     }
+
+    let moves = board.generate_captures();
+
+    if moves.is_empty() {
+        return (
+            MoveWithScore::new_with_score(BitMove::null(), eval(board)),
+            1,
+        );
+    }
+
+    let mut best_move = MoveWithScore::new_with_score(BitMove::null(), alpha);
+    let mut new_nodes = nodes;
+    for m in moves {
+        if m.dst() == board.enemy_castle().to_square() {
+            return (MoveWithScore::new_with_score(m, WIN), new_nodes);
+        }
+        board.apply_move(m);
+        let (ret, n) = quiescence(board, -beta, -alpha, depth - 1, 0);
+        new_nodes += n;
+        let score = -ret.score();
+        let result = MoveWithScore::new_with_score(m, score);
+        board.undo_move();
+        if result.score > alpha {
+            alpha = result.score;
+            if alpha >= beta {
+                return (result, new_nodes);
+            }
+            best_move = result;
+        }
+    }
+    (best_move, new_nodes)
 }

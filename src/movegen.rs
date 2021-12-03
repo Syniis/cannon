@@ -5,7 +5,7 @@ use crate::color::*;
 use crate::square::Square;
 use crate::tables::*;
 
-pub const MAX_MOVES: usize = 64;
+pub const MAX_MOVES: usize = 62;
 pub struct MoveList {
     pub moves: [BitMove; MAX_MOVES],
     pub len: usize,
@@ -82,19 +82,32 @@ impl MoveGen {
     pub fn generate(board: &Board) -> MoveList {
         let mut move_list = MoveList::default();
 
+        // order is important (captures first)
         MoveGen::generate_side_moves(&mut move_list, &board);
         MoveGen::generate_cannon_shots(&mut move_list, &board);
-        MoveGen::generate_forward_moves(&mut move_list, &board);
         MoveGen::generate_cannon_jumps(&mut move_list, &board);
+        // TODO putting retreats above forwards results in endless loop even in winning position (maybe just fixed with repition rule)
+        MoveGen::generate_forward_moves(&mut move_list, &board);
         MoveGen::generate_retreats(&mut move_list, &board);
         move_list
     }
 
+    pub fn generate_captures(board: &Board) -> MoveList {
+        let mut move_list = MoveList::default();
+        // We know that retreats and jumps can never be captures
+        MoveGen::generate_side_moves(&mut move_list, &board);
+        MoveGen::generate_cannon_shots(&mut move_list, &board);
+        MoveGen::generate_forward_moves(&mut move_list, &board);
+        let enemies = board.enemy_pieces() | board.enemy_castle();
+        let is_capture = |m: &BitMove| (BitBoard::from_square(m.dst()) & enemies).is_not_empty();
+        move_list.filter(move |m| is_capture(m)).collect()
+    }
+
     #[inline]
     fn generate_forward_moves(moves: &mut MoveList, board: &Board) {
-        let mut pieces = board.player_pieces();
-        let unoccupied = !pieces;
-        while let Some(src) = pieces.pop_some_lsb() {
+        let my_pieces = board.player_pieces();
+        let unoccupied = !my_pieces;
+        for src in my_pieces {
             let forwards = front(board.side_to_move(), src);
             let forwards = forwards & unoccupied;
             for dst in forwards {
@@ -105,10 +118,10 @@ impl MoveGen {
 
     #[inline]
     fn generate_side_moves(moves: &mut MoveList, board: &Board) {
-        let mut pieces = board.player_pieces();
+        let my_pieces = board.player_pieces();
         let enemy_pieces = board.enemy_pieces() | board.enemy_castle();
 
-        while let Some(src) = pieces.pop_some_lsb() {
+        for src in my_pieces {
             let sides = sides(board.side_to_move(), src);
             let sides = sides & enemy_pieces;
 
@@ -121,11 +134,11 @@ impl MoveGen {
     #[inline]
     fn generate_retreats(moves: &mut MoveList, board: &Board) {
         let my_color = board.side_to_move();
-        let mut my_pieces = board.player_pieces();
+        let my_pieces = board.player_pieces();
         let enemy_pieces = board.enemy_pieces();
         let unoccupied = !board.pieces_with_castles();
 
-        while let Some(src) = my_pieces.pop_some_lsb() {
+        for src in my_pieces {
             let adj = front(my_color, src) | sides(my_color, src);
             // there is enemy piece adjacent
             if (adj & enemy_pieces).is_not_empty() {
@@ -142,11 +155,11 @@ impl MoveGen {
 
     #[inline]
     fn generate_cannon_jumps(moves: &mut MoveList, board: &Board) {
-        let mut my_pieces = board.player_pieces();
+        let my_pieces = board.player_pieces();
         let my_pieces_original = my_pieces;
         let unoccupied = !board.pieces_with_castles();
 
-        while let Some(src) = my_pieces.pop_some_lsb() {
+        for src in my_pieces {
             let possible_jumps = distance_ring(src, 3) & unoccupied;
             for dst in possible_jumps {
                 let between = between(src, dst);
@@ -159,12 +172,12 @@ impl MoveGen {
 
     #[inline]
     fn generate_cannon_shots(moves: &mut MoveList, board: &Board) {
-        let mut my_pieces = board.player_pieces();
+        let my_pieces = board.player_pieces();
         let my_pieces_original = my_pieces;
         let enemy_pieces = board.enemy_pieces() | board.enemy_castle();
         let unoccupied = !board.pieces_with_castles();
 
-        while let Some(src) = my_pieces.pop_some_lsb() {
+        for src in my_pieces {
             for d in 0..8 {
                 if (shot_blocker(src, d) & unoccupied).is_not_empty() {
                     if shot_body(src, d).is_not_empty()

@@ -4,6 +4,7 @@ use std::fmt;
 use std::ops::*;
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Debug)]
+#[repr(transparent)]
 pub struct BitBoard(pub u64);
 
 pub const EMPTY: BitBoard = BitBoard(0);
@@ -84,7 +85,7 @@ impl Iterator for BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = &string_u64(reverse_bytes(self.0));
+        let s = &string_u64(self.0.swap_bytes());
         f.pad(s)
     }
 }

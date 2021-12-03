@@ -88,8 +88,8 @@ impl Board {
         board.set(Color::Black, Square::H8);
         board.set(Color::Black, Square::H7);
         board.set(Color::Black, Square::H6);
-        board.castles[0] |= BitBoard::from_square(Square::H1);
-        board.castles[1] |= BitBoard::from_square(Square::A8);
+        board.castles[0] |= BitBoard::from_square(Square::F1);
+        board.castles[1] |= BitBoard::from_square(Square::C8);
         board
     }
 
@@ -197,15 +197,27 @@ impl Board {
     }
 
     pub fn generate_moves(&self) -> MoveList {
-        MoveGen::generate(self)
+        MoveGen::generate(&self)
+    }
+
+    pub fn generate_captures(&self) -> MoveList {
+        MoveGen::generate_captures(&self)
     }
 
     pub fn generate_moves_for(&self, sq: Square) -> Vec<BitMove> {
-        MoveGen::generate(self).filter(|m| m.src() == sq).collect()
+        MoveGen::generate(&self).filter(|m| m.src() == sq).collect()
     }
     pub fn best_move(&self, depth: u16) -> MoveWithScore {
-        let alpha = -9999;
-        let beta = 9999;
-        alpha_beta_search(&mut self.shallow_clone(), alpha, beta, depth)
+        search(&mut self.shallow_clone(), depth)
+    }
+
+    pub fn last_capture(&self) -> bool {
+        self.state.prev_capture
+    }
+    pub fn prev_move(&self) -> BitMove {
+        self.state.prev_move
+    }
+    pub fn flip_side(&mut self) {
+        self.side_to_move = !self.side_to_move;
     }
 }

@@ -31,22 +31,13 @@ async fn main() {
     loop {
         clear_background(BLACK);
 
-        //if board.castle_dead(cannon::board::Color::Black) {
-        //assert!(!board.is_empty(board.white_castle()));
-        //won = Some(cannon::board::Color::White);
-        //}
-        //if board.castle_dead(cannon::board::Color::White) {
-        //assert!(!board.is_empty(board.black_castle()));
-        //won = Some(cannon::board::Color::Black);
-        //}
-
         if is_key_pressed(KeyCode::T) {
             show_moves = show_moves ^ true;
         }
 
         if is_key_pressed(KeyCode::G) {
             let time = Instant::now();
-            let MoveWithScore { bit_move: m, score } = board.best_move(6);
+            let MoveWithScore { bit_move: m, score } = board.best_move(8);
             println!("{}, {}, {}", m.src(), m.dst(), board.side_to_move());
             println!("{}", score);
             println!("{}", time.elapsed().as_secs_f32());
@@ -75,9 +66,8 @@ async fn main() {
                 White => "White won",
                 Black => "Black won",
             };
-            draw_text(s, game_size / 2.0, game_size / 2.0, 35.0, WHITE);
-            next_frame().await;
-            continue;
+            println!("{}", s);
+            won = None;
         }
 
         draw_rectangle(offset_x, offset_y, game_size - 20., game_size - 20., WHITE);
@@ -204,6 +194,9 @@ async fn main() {
                         .find(|m| m.dst() == clicked_sq)
                     {
                         println!("{} -> {}", bitmove.src(), bitmove.dst());
+                        if bitmove.dst() == board.enemy_castle().to_square() {
+                            won = Some(board.side_to_move());
+                        }
                         board.apply_move(*bitmove);
                     }
                     last_clicked = None;

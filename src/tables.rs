@@ -231,55 +231,68 @@ pub fn init() {
     generate_shots();
 }
 
+#[inline(always)]
 pub fn front(color: Color, square: Square) -> BitBoard {
     unsafe { FRONT[color.to_index()][square.to_index()] }
 }
 
+#[inline(always)]
 pub fn sides(color: Color, square: Square) -> BitBoard {
     unsafe { SIDES[color.to_index()][square.to_index()] }
 }
 
+#[inline(always)]
 pub fn retreats(color: Color, square: Square) -> BitBoard {
     unsafe { RETREATS[color.to_index()][square.to_index()] }
 }
 
+#[inline(always)]
 pub fn distance_index(from: usize, to: usize) -> u8 {
     unsafe { DISTANCES[from][to] }
 }
 
+#[inline(always)]
 pub fn distance_square(from: Square, to: Square) -> u8 {
     unsafe { DISTANCES[from.to_index()][to.to_index()] }
 }
 
+#[inline(always)]
 pub fn distance_ring(square: Square, dist: usize) -> BitBoard {
     assert!(dist > 0 && dist <= 7);
     unsafe { DISTANCE_RINGS[dist - 1][square.to_index()] }
 }
 
+#[inline(always)]
 pub fn distance_dir_ring(src: Square, dist: usize) -> BitBoard {
     distance_ring(src, dist) & (diagonals(src) | orthogonals(src))
 }
 
+#[inline(always)]
 pub fn diagonals(square: Square) -> BitBoard {
     unsafe { DIAGONALS[square.to_index()] }
 }
 
+#[inline(always)]
 pub fn orthogonals(square: Square) -> BitBoard {
     unsafe { ORTHOGONALS[square.to_index()] }
 }
 
+#[inline(always)]
 pub fn between(src: Square, dst: Square) -> BitBoard {
     unsafe { BETWEEN[src.to_index()][dst.to_index()] }
 }
 
+#[inline(always)]
 pub fn shot_blocker(src: Square, dir: usize) -> BitBoard {
     unsafe { SHOTS[0][dir][src.to_index()] }
 }
 
+#[inline(always)]
 pub fn shot_body(src: Square, dir: usize) -> BitBoard {
     unsafe { SHOTS[1][dir][src.to_index()] }
 }
 
+#[inline(always)]
 pub fn shot_targets(src: Square, dir: usize) -> BitBoard {
     unsafe { SHOTS[2][dir][src.to_index()] }
 }

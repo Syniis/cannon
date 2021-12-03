@@ -3,6 +3,7 @@ use crate::defs::*;
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[repr(transparent)]
 pub struct Square(pub u8);
 
 pub const DEFAULT: Square = Square(0);

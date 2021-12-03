@@ -1,12 +1,14 @@
 use crate::defs::*;
 use crate::square::Square;
 use core::cmp::Ordering;
+use std::fmt;
 
 const SRC_MASK: u16 = 0b0000_000000_111111;
 const DST_MASK: u16 = 0b0000_111111_000000;
 const SHOT_MASK: u16 = 0b0001_000000_000000;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct BitMove {
     pub data: u16,
 }
@@ -65,6 +67,12 @@ impl BitMove {
 
     pub fn is_shot(self) -> bool {
         (self.data & SHOT_MASK) != 0
+    }
+}
+
+impl fmt::Display for BitMove {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} -> {}", self.src(), self.dst())
     }
 }
 
