@@ -88,8 +88,8 @@ impl Board {
         board.set(Color::Black, Square::H8);
         board.set(Color::Black, Square::H7);
         board.set(Color::Black, Square::H6);
-        board.castles[0] |= BitBoard::from_square(Square::F1);
-        board.castles[1] |= BitBoard::from_square(Square::C8);
+        board.castles[0] |= BitBoard::from_square(Square::H1);
+        board.castles[1] |= BitBoard::from_square(Square::A8);
         board
     }
 

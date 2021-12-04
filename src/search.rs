@@ -4,12 +4,13 @@ use crate::cannon_move::MoveWithScore;
 use crate::eval::eval;
 
 // TODO find good values
-const QUIESCENCE_DEPTH: u16 = 20;
-const WINDOW: i16 = 25;
-const WINDOW_DEPTH_FACTOR: i16 = 25;
+const QUIESCENCE_DEPTH: u16 = 14;
+const WINDOW: i16 = 6;
+const WINDOW_DEPTH_FACTOR: i16 = 4;
 const NEG_INF: i16 = -9999;
 const INF: i16 = 9999;
 const WIN: i16 = 5000;
+const FUTILITY_CUTOFF: [i16; 3] = [8, 15, 25];
 
 // TODO futility pruning
 // TODO delta pruning
@@ -36,6 +37,13 @@ pub fn search(board: &mut Board, max_depth: u16) -> MoveWithScore {
                 beta =
                     m.score + (WINDOW + (max_depth - current_depth) as i16 * WINDOW_DEPTH_FACTOR);
                 best_move = m;
+                println!(
+                    "Best move {}, score {} alpha {}, beta, {}",
+                    m.bitmove(),
+                    m.score(),
+                    alpha,
+                    beta
+                );
             }
             current_depth += 1;
         }
@@ -58,7 +66,13 @@ pub fn alpha_beta_search(
             1,
         );
     }
-
+    if depth <= 3 && !board.last_capture() {
+        assert!(depth != 0);
+        let eval = eval(board);
+        if eval + FUTILITY_CUTOFF[depth as usize - 1] < alpha {
+            return quiescence(board, alpha, beta, QUIESCENCE_DEPTH, 0);
+        }
+    }
     let moves = board.generate_moves();
 
     if moves.is_empty() {
