@@ -3,6 +3,7 @@ use crate::color::*;
 use crate::square::Square;
 use crate::square::ALL_SQUARES;
 
+// TODO make this safe (remove mut)
 static mut FRONT: [[BitBoard; 64]; 2] = [[EMPTY; 64]; 2];
 static mut SIDES: [[BitBoard; 64]; 2] = [[EMPTY; 64]; 2];
 static mut RETREATS: [[BitBoard; 64]; 2] = [[EMPTY; 64]; 2];

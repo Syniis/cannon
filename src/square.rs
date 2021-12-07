@@ -17,36 +17,36 @@ pub const NUM_SQUARES: usize = 64;
 
 impl Square {
     #[inline(always)]
-    pub fn new(sq: u8) -> Self {
+    pub const fn new(sq: u8) -> Self {
         assert!(sq < 64);
         Self(sq)
     }
 
     #[inline(always)]
-    pub fn make_square(rank: Rank, file: File) -> Self {
+    pub const fn make_square(rank: Rank, file: File) -> Self {
         Self((rank.to_index() as u8) << 3 ^ (file.to_index() as u8))
     }
 
     #[inline(always)]
-    pub fn rank(&self) -> Rank {
+    pub const fn rank(&self) -> Rank {
         assert!(self.is_okay());
         Rank::from_index(self.rank_index())
     }
 
     #[inline(always)]
-    pub fn file(&self) -> File {
+    pub const fn file(&self) -> File {
         assert!(self.is_okay());
         File::from_index(self.file_index())
     }
 
     #[inline(always)]
-    pub fn rank_index(&self) -> u8 {
+    pub const fn rank_index(&self) -> u8 {
         assert!(self.is_okay());
         self.0 >> 3
     }
 
     #[inline(always)]
-    pub fn file_index(&self) -> u8 {
+    pub const fn file_index(&self) -> u8 {
         assert!(self.is_okay());
         self.0 & 7
     }
@@ -58,11 +58,29 @@ impl Square {
             .and_then(|r| Some(Square::make_square(r, self.file())))
     }
 
+    pub const fn const_up(&self) -> Option<Self> {
+        match self.rank().const_up() {
+            Some(r) => {
+                return Some(Square::make_square(r, self.file()));
+            }
+            None => None,
+        }
+    }
+
     #[inline]
     pub fn down(&self) -> Option<Self> {
         self.rank()
             .down()
             .and_then(|r| Some(Square::make_square(r, self.file())))
+    }
+
+    pub const fn const_down(&self) -> Option<Self> {
+        match self.rank().const_down() {
+            Some(r) => {
+                return Some(Square::make_square(r, self.file()));
+            }
+            None => None,
+        }
     }
 
     #[inline]
@@ -72,11 +90,29 @@ impl Square {
             .and_then(|f| Some(Square::make_square(self.rank(), f)))
     }
 
+    pub const fn const_left(&self) -> Option<Self> {
+        match self.file().const_left() {
+            Some(f) => {
+                return Some(Square::make_square(self.rank(), f));
+            }
+            None => None,
+        }
+    }
+
     #[inline]
     pub fn right(&self) -> Option<Self> {
         self.file()
             .right()
             .and_then(|f| Some(Square::make_square(self.rank(), f)))
+    }
+
+    pub const fn const_right(&self) -> Option<Self> {
+        match self.file().const_right() {
+            Some(f) => {
+                return Some(Square::make_square(self.rank(), f));
+            }
+            None => None,
+        }
     }
 
     #[inline]
@@ -87,23 +123,37 @@ impl Square {
         }
     }
 
+    pub const fn const_forward(&self, color: Color) -> Option<Self> {
+        match color {
+            Color::White => self.const_up(),
+            Color::Black => self.const_down(),
+        }
+    }
+
     #[inline]
     pub fn backward(&self, color: Color) -> Option<Self> {
         self.forward(!color)
     }
 
+    pub const fn const_backward(&self, color: Color) -> Option<Self> {
+        match color {
+            Color::White => self.const_down(),
+            Color::Black => self.const_up(),
+        }
+    }
+
     #[inline]
-    pub fn flip(self) -> Self {
+    pub const fn flip(self) -> Self {
         Self(self.0 ^ 0b111000)
     }
 
     #[inline(always)]
-    pub fn to_u8(&self) -> u8 {
+    pub const fn to_u8(&self) -> u8 {
         self.0
     }
 
     #[inline(always)]
-    pub fn to_index(&self) -> usize {
+    pub const fn to_index(&self) -> usize {
         self.0 as usize
     }
 

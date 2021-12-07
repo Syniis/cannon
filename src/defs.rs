@@ -50,7 +50,7 @@ pub const ALL_RANKS: [Rank; NUM_RANKS] = [
 
 impl File {
     #[inline(always)]
-    pub fn from_index(i: u8) -> Self {
+    pub const fn from_index(i: u8) -> Self {
         assert!(i < 8);
         ALL_FILES[i as usize]
     }
@@ -63,6 +63,9 @@ impl File {
             Some(File::from_index(self.to_index() - 1))
         }
     }
+    pub const fn const_left(&self) -> Option<Self> {
+        LEFT_TABLE[self.to_index() as usize]
+    }
 
     #[inline(always)]
     pub fn right(&self) -> Option<Self> {
@@ -72,16 +75,19 @@ impl File {
             Some(File::from_index(self.to_index() + 1))
         }
     }
+    pub const fn const_right(&self) -> Option<Self> {
+        RIGHT_TABLE[self.to_index() as usize]
+    }
 
     #[inline(always)]
-    pub fn to_index(&self) -> u8 {
+    pub const fn to_index(&self) -> u8 {
         *self as u8
     }
 }
 
 impl Rank {
     #[inline(always)]
-    pub fn from_index(i: u8) -> Self {
+    pub const fn from_index(i: u8) -> Self {
         assert!(i < 8);
         ALL_RANKS[i as usize]
     }
@@ -95,6 +101,10 @@ impl Rank {
         }
     }
 
+    pub const fn const_down(&self) -> Option<Self> {
+        DOWN_TABLE[self.to_index() as usize]
+    }
+
     #[inline(always)]
     pub fn up(&self) -> Option<Self> {
         if *self == Rank::Eight {
@@ -104,8 +114,56 @@ impl Rank {
         }
     }
 
+    pub const fn const_up(&self) -> Option<Self> {
+        UP_TABLE[self.to_index() as usize]
+    }
+
     #[inline(always)]
-    pub fn to_index(&self) -> u8 {
+    pub const fn to_index(&self) -> u8 {
         *self as u8
     }
 }
+
+pub const LEFT_TABLE: [Option<File>; 8] = [
+    Some(File::B),
+    Some(File::C),
+    Some(File::D),
+    Some(File::E),
+    Some(File::F),
+    Some(File::G),
+    Some(File::H),
+    None,
+];
+
+pub const RIGHT_TABLE: [Option<File>; 8] = [
+    None,
+    Some(File::B),
+    Some(File::C),
+    Some(File::D),
+    Some(File::E),
+    Some(File::F),
+    Some(File::G),
+    Some(File::H),
+];
+
+pub const DOWN_TABLE: [Option<Rank>; 8] = [
+    Some(Rank::Two),
+    Some(Rank::Three),
+    Some(Rank::Four),
+    Some(Rank::Five),
+    Some(Rank::Six),
+    Some(Rank::Seven),
+    Some(Rank::Eight),
+    None,
+];
+
+pub const UP_TABLE: [Option<Rank>; 8] = [
+    None,
+    Some(Rank::One),
+    Some(Rank::Two),
+    Some(Rank::Three),
+    Some(Rank::Four),
+    Some(Rank::Five),
+    Some(Rank::Six),
+    Some(Rank::Seven),
+];

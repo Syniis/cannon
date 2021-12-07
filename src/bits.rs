@@ -1,5 +1,5 @@
 #[rustfmt::skip]
-static DEBRUIJ_T: &'static [u8] = &[
+const DEBRUIJ_T: [u8; 64] = [
     0, 47,  1, 56, 48, 27,  2, 60,
     57, 49, 41, 37, 28, 16,  3, 61,
     54, 58, 35, 52, 50, 42, 21, 44,
@@ -13,7 +13,7 @@ static DEBRUIJ_T: &'static [u8] = &[
 const DEBRUIJ_M: u64 = 0x03f7_9d71_b4cb_0a89;
 
 #[inline(always)]
-pub fn bit_scan_forward(bits: u64) -> u8 {
+pub const fn bit_scan_forward(bits: u64) -> u8 {
     DEBRUIJ_T[(((bits ^ bits.wrapping_sub(1)).wrapping_mul(DEBRUIJ_M)).wrapping_shr(58)) as usize]
 }
 

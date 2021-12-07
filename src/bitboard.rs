@@ -13,43 +13,42 @@ impl_bit_ops!(BitBoard, u64);
 
 impl BitBoard {
     #[inline(always)]
-    pub fn new(b: u64) -> Self {
+    pub const fn new(b: u64) -> Self {
         Self(b)
     }
 
     #[inline(always)]
-    pub fn from_square(sq: Square) -> Self {
+    pub const fn from_square(sq: Square) -> Self {
         Self(1u64 << sq.to_u8())
     }
 
     #[inline(always)]
-    pub fn count_bits(self) -> u32 {
+    pub const fn count_bits(self) -> u32 {
         self.0.count_ones()
     }
 
     #[inline(always)]
-    pub fn is_empty(self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
     #[inline(always)]
-    pub fn is_not_empty(self) -> bool {
+    pub const fn is_not_empty(self) -> bool {
         !self.is_empty()
     }
 
     #[inline(always)]
-    pub fn to_square(&self) -> Square {
-        assert_eq!(self.count_bits(), 1);
+    pub const fn to_square(&self) -> Square {
         Square(self.lsb_u8())
     }
 
     #[inline(always)]
-    pub fn reverse(&self) -> Self {
+    pub const fn reverse(&self) -> Self {
         Self(self.0.swap_bytes())
     }
 
     #[inline(always)]
-    pub fn lsb_square(self) -> Square {
+    pub const fn lsb_square(self) -> Square {
         Square(self.lsb_u8())
     }
 
@@ -70,7 +69,7 @@ impl BitBoard {
     }
 
     #[inline(always)]
-    pub fn lsb_u8(self) -> u8 {
+    pub const fn lsb_u8(self) -> u8 {
         bit_scan_forward(self.0)
     }
 }
