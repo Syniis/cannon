@@ -4,6 +4,7 @@ use cannon::cannon_move::MoveWithScore;
 use cannon::color::Color::Black;
 use cannon::color::Color::White;
 use cannon::defs::*;
+use cannon::search::Searcher;
 use cannon::square::Square;
 use cannon::tables::init;
 use macroquad::prelude::*;
@@ -16,9 +17,11 @@ const SQUARES: u8 = 8;
 async fn main() {
     init();
     let mut board = Board::start_position();
+    let mut searcher = Searcher::new();
     let mut last_clicked: Option<Vec2<i32>> = None;
     let mut show_moves = false;
     let mut won: Option<cannon::color::Color> = None;
+    let mut diff = 8;
     let wcsq = board.castle_with_color(White).to_square();
     let wc = Vec2::new(wcsq.file_index() as i32, wcsq.rank_index() as i32);
     let bcsq = board.castle_with_color(Black).to_square();
@@ -37,7 +40,8 @@ async fn main() {
 
         if is_key_pressed(KeyCode::G) {
             let time = Instant::now();
-            let MoveWithScore { bit_move: m, score } = board.best_move(8);
+            let MoveWithScore { bit_move: m, score } =
+                searcher.search(&mut board.shallow_clone(), diff);
             println!("{}, {}, {}", m.src(), m.dst(), board.side_to_move());
             println!("{}", score);
             println!("{}", time.elapsed().as_secs_f32());
@@ -46,14 +50,23 @@ async fn main() {
             } else if m.dst() == board.enemy_castle().to_square() {
                 won = Some(board.side_to_move());
             } else {
+                println!("{}", board.hash());
                 board.apply_move(m);
+                println!("{}", board.hash());
             }
+
             last_clicked = None;
         }
 
         if is_key_pressed(KeyCode::U) {
             board.undo_move();
             last_clicked = None;
+        }
+        if is_key_pressed(KeyCode::J) {
+            diff -= 1;
+        }
+        if is_key_pressed(KeyCode::K) {
+            diff += 1;
         }
 
         let game_size = screen_width().min(screen_height());
@@ -197,7 +210,9 @@ async fn main() {
                         if bitmove.dst() == board.enemy_castle().to_square() {
                             won = Some(board.side_to_move());
                         }
+                        println!("{}", board.hash());
                         board.apply_move(*bitmove);
+                        println!("{}", board.hash());
                     }
                     last_clicked = None;
                 }

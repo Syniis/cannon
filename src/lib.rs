@@ -1,4 +1,5 @@
 #![feature(generic_const_exprs)]
+#![feature(const_for)]
 #![feature(int_abs_diff)]
 
 #[macro_use]
@@ -14,3 +15,4 @@ pub mod movegen;
 pub mod search;
 pub mod square;
 pub mod tables;
+pub mod transposition;

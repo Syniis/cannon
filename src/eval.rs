@@ -29,6 +29,10 @@ pub fn eval(board: &Board) -> i16 {
     (PIECE_VALUE * pc) + area + surround + castle_distance
 }
 
+pub fn simple_eval(board: &Board) -> i16 {
+    piece_count(board.player_pieces()) - piece_count(board.enemy_pieces())
+}
+
 #[inline(always)]
 fn piece_count(mask: BitBoard) -> i16 {
     mask.count_bits() as i16

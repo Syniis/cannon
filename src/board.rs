@@ -1,11 +1,10 @@
 use crate::bitboard::BitBoard;
 use crate::bitboard::EMPTY;
 use crate::cannon_move::BitMove;
-use crate::cannon_move::MoveWithScore;
 use crate::color::{Color, NUM_COLORS};
 use crate::movegen::{MoveGen, MoveList};
-use crate::search::*;
 use crate::square::Square;
+use crate::transposition::hash::*;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -13,6 +12,7 @@ pub struct BoardState {
     pub prev_move: BitMove,
     pub prev_capture: bool,
     pub prev_state: Option<Arc<BoardState>>,
+    pub hash: u64,
 }
 impl Default for BoardState {
     fn default() -> Self {
@@ -20,6 +20,7 @@ impl Default for BoardState {
             prev_move: BitMove::null(),
             prev_capture: false,
             prev_state: None,
+            hash: SIDE, // TODO
         }
     }
 }
@@ -29,6 +30,7 @@ impl BoardState {
             prev_move: BitMove::null(),
             prev_capture: false,
             prev_state: self.prev_state(),
+            hash: self.hash,
         }
     }
     pub fn prev_state(&self) -> Option<Arc<Self>> {
@@ -149,8 +151,12 @@ impl Board {
         self.pieces_with_color[color.to_index()] ^= square_bb;
         self.pieces_with_color[(!color).to_index()] &= !square_bb;
         self.pieces |= square_bb;
+        let mut new_state = self.state.partial_clone();
+        new_state.hash ^= PIECES[color.to_index()][square.to_index()];
+        self.state = Arc::new(new_state);
     }
 
+    // TODO split this up into seperate parts to also use in undoing moves
     pub fn apply_move(&mut self, m: BitMove) {
         assert_ne!(m.src(), m.dst());
         let src_bb = BitBoard::from_square(m.src());
@@ -162,6 +168,7 @@ impl Board {
         if m.is_shot() {
             self.pieces ^= dst_bb;
             self.pieces_with_color[(!self.side_to_move).to_index()] ^= dst_bb;
+            new_state.hash ^= PIECES[(!self.side_to_move).to_index()][m.dst().to_index()];
         } else {
             self.pieces ^= src_bb;
             self.pieces |= dst_bb;
@@ -169,6 +176,14 @@ impl Board {
             new_state.prev_capture =
                 (self.pieces_with_color[(!self.side_to_move).to_index()] & dst_bb).is_not_empty();
             self.pieces_with_color[(!self.side_to_move).to_index()] &= !dst_bb;
+            // Toggle hash of source and destination square of color to move
+            new_state.hash ^= PIECES[self.side_to_move.to_index()][m.src().to_index()];
+            new_state.hash ^= PIECES[self.side_to_move.to_index()][m.dst().to_index()];
+            // Toggle hash of destination square of opposing color if move was capture
+            if new_state.prev_capture {
+                new_state.hash ^= PIECES[(!self.side_to_move).to_index()][m.dst().to_index()];
+            }
+            new_state.hash ^= SIDE;
         }
         new_state.prev_move = m;
         self.side_to_move = !self.side_to_move;
@@ -207,9 +222,6 @@ impl Board {
     pub fn generate_moves_for(&self, sq: Square) -> Vec<BitMove> {
         MoveGen::generate(&self).filter(|m| m.src() == sq).collect()
     }
-    pub fn best_move(&self, depth: u16) -> MoveWithScore {
-        search(&mut self.shallow_clone(), depth)
-    }
 
     pub fn last_capture(&self) -> bool {
         self.state.prev_capture
@@ -219,5 +231,8 @@ impl Board {
     }
     pub fn flip_side(&mut self) {
         self.side_to_move = !self.side_to_move;
+    }
+    pub fn hash(&self) -> u64 {
+        self.state.hash
     }
 }
